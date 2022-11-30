@@ -39,7 +39,7 @@ DROP VIEW V_PIEZAS;
 DROP VIEW V_EMPLEADOS;
 DROP VIEW V_COCHES;
 
-DROP INDEX Estado_Piezas;
+DROP INDEX Estado_Neumaticos;
 
 /**************************************************/
 /* 2.- Creamos las tablas de nuestro Diagrama EER */
@@ -355,7 +355,7 @@ CREATE TABLE WET(
 /* 3.- Creamos los índices necesarios sobre las tablas */
 /*******************************************************/
 
-CREATE INDEX Estado_Piezas 
+CREATE INDEX Estado_Neumaticos 
 ON NEUMATICOS (ESTADO,MODELO,FECHA_FABRICACION);
 
 /************************************************/
