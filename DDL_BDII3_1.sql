@@ -38,7 +38,7 @@ DROP TABLE PRODUCCION CASCADE CONSTRAINTS;
 
 DROP VIEW V_PIEZAS;
 DROP VIEW V_EMPLEADOS;
-DROP VIEW V_COCHES;
+DROP VIEW V_TECNICOS;
 
 /**************************************************/
 /* 2.- Creamos las tablas de nuestro Diagrama EER */
@@ -593,3 +593,248 @@ Select * from tecnicos;
 Select * from persona;
 
 Select * from empresa;
+/*PROCEDIMIENTOS Y FUNCIONES*/
+create or replace PROCEDURE NEUMATICOCADUCADO
+IS
+    listaFECHAS NEUMATICOS%ROWTYPE;
+    CURSOR C_FECHA IS
+        SELECT ID_NEUMATICOS, ID_COMPONENTE, MODELO, COMPUESTO, ESTADO, FECHA_FABRICACION
+        FROM NEUMATICOS;
+    fecha_leida DATE;
+    fecha_actual DATE := SYSDATE;
+    fecha_maxima DATE := SYSDATE - 730;
+BEGIN 
+   OPEN C_FECHA;
+   LOOP
+   FETCH C_FECHA INTO listaFechas;
+   EXIT WHEN C_FECHA%NOTFOUND;
+        fecha_leida := listaFechas.Fecha_Fabricacion;
+        IF (fecha_maxima<fecha_leida) THEN
+        DBMS_OUTPUT.PUT_LINE('NEUMATICO NO CADUCADO: ' || listaFechas.ID_NEUMATICOS);
+        ELSE
+    DBMS_OUTPUT.PUT_LINE('NEUMATICO CADUCADO: ' || listaFECHAS.ID_NEUMATICOS);
+        END IF;
+    END LOOP;
+    CLOSE C_FECHA;
+END NEUMATICOCADUCADO;
+/
+    show errors
+create or replace PROCEDURE PORCENTAJEPRESUPUESTO(Presupuesto IN INT)
+IS
+    SUMA_PRESU_VACIO EXCEPTION;
+    SumaPresu INT;
+    PorcentajePresu INT;
+BEGIN
+    SELECT SUM(PRECIOCOCHE) INTO SumaPresu
+    FROM COCHE;
+    IF SumaPresu IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No hay un presupuesto definido');
+    END IF;
+    IF Presupuesto<=0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'El presupuesto definido debe ser mayor de 0');
+    END IF;
+    PorcentajePresu := (SumaPresu/Presupuesto)*10;
+    DBMS_OUTPUT.PUT_LINE('El presupuesto actual del coche supone un: '||PorcentajePresu||'%');
+END PORCENTAJEPRESUPUESTO;
+/
+SHOW ERRORS
+create or replace PROCEDURE VALIDANIF
+IS
+	listaDNIS EMPLEADOS%ROWTYPE;
+    CURSOR C_DNI IS
+        SELECT DNI, F_INICIOCONTRATO, DIRECCION, NSS, SUELDO, NOMBRE, APELLIDOS, ESCUDID, ID_DIRIGENTE   
+        FROM EMPLEADOS;
+    letrasValidas CHAR(23) := 'TRWAGMYFPDXBNJZSQVHLCKE';
+    letraCorrecta CHAR;
+    DNI_SIN_LETRA NUMBER;
+    letraLeida CHAR;
+    resto NUMBER;
+BEGIN 
+    OPEN C_DNI;
+    LOOP
+        FETCH C_DNI INTO listaDNIS;
+        EXIT WHEN C_DNI%NOTFOUND;
+        resto := DNI_SIN_LETRA MOD 23;
+        letraCorrecta := SUBSTR(letrasValidas, resto+1, 1);
+        DNI_SIN_LETRA := SUBSTR(listaDNIS.DNI,0,8);
+        letraLeida := SUBSTR(listaDNIS.DNI, 9, 1);
+        IF (letraCorrecta != letraLeida) THEN
+           DBMS_OUTPUT.PUT_LINE('El DNI ' || listaDNIS.DNI || ' es INCORRECTO.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('El DNI ' || listaDNIS.DNI || ' es correcto.');
+        END IF;
+    END LOOP;
+    CLOSE C_DNI;
+END VALIDANIF;
+/
+SHOW ERRORS
+/*Procedimiento para actualizar sueldo de empleados*/
+CREATE OR REPLACE
+PROCEDURE ActualizarSueldo(cant IN NUMBER)
+IS
+	listaEmpleados EMPLEADOS%ROWTYPE;
+    
+	CURSOR C_SUELDO IS SELECT DNI, F_INICIOCONTRATO, DIRECCION, NSS, SUELDO, NOMBRE, APELLIDOS, ESCUDID, ID_DIRIGENTE  FROM EMPLEADOS FOR UPDATE;
+
+BEGIN
+	FOR listaEmpleados IN C_SUELDO LOOP
+	/*EXIT WHEN listaEmpleados%NOTFOUND*/
+		UPDATE EMPLEADOS SET SUELDO =  SUELDO + cant
+			WHERE CURRENT OF C_SUELDO;
+		DBMS_OUTPUT.PUT_LINE(listaEmpleados.SUELDO);
+	END LOOP;
+END ActualizarSueldo;
+/
+    show errors
+
+/* Procedimiento para mostrar pilotos con puntuación más alta que punt*/
+CREATE OR REPLACE
+PROCEDURE PuntuacionPilotos( punt IN NUMBER, n_pilotos OUT NUMBER)
+IS
+	listaPilotos PILOTOS%ROWTYPE;
+	CURSOR C_PILOTOS IS SELECT DNI, PUNTUACIONPILOTO, PUESTO, IDGP, IDCOCHE FROM PILOTOS WHERE PUNTUACIONPILOTO>=punt;
+	No_Pilotos EXCEPTION;
+    nombre EMPLEADOS.NOMBRE%TYPE;
+
+BEGIN
+	/*FOR listaPilotos IN C_PILOTOS LOOP*/
+    OPEN C_PILOTOS;
+    DBMS_OUTPUT.PUT_LINE('Pilotos con más de ' || punt || ' puntos');
+    LOOP
+    FETCH C_PILOTOS INTO listaPilotos;
+	EXIT WHEN C_PILOTOS%NOTFOUND;
+		SELECT NOMBRE INTO nombre FROM EMPLEADOS WHERE DNI=listaPilotos.DNI;
+		DBMS_OUTPUT.PUT_LINE(nombre || ' ' || listaPilotos.PUNTUACIONPILOTO || ' puntos');
+		DBMS_OUTPUT.PUT_LINE(' ');
+END LOOP;
+
+n_pilotos := C_PILOTOS%ROWCOUNT;
+
+IF (n_pilotos<=0) THEN
+RAISE No_Pilotos;
+END IF;
+
+EXCEPTION
+WHEN No_Pilotos THEN 
+	DBMS_OUTPUT.PUT_LINE('No existen pilotos que superen esa puntuación.');
+
+END PuntuacionPilotos;
+
+/
+    show errors
+    
+CREATE OR REPLACE
+FUNCTION NumeroComponentesFecha(fecha IN DATE)
+RETURN NUMBER
+IS
+    nComponentes NUMBER;
+	listaComponentes Componentes%ROWTYPE;
+	CURSOR C_PIEZAS IS SELECT ID_COMPONENTE, NUM_PIEZA, NUM_VERSION, FECHA_FABRICACION, ESTADO FROM COMPONENTES WHERE FECHA_FABRICACION >= fecha;
+
+BEGIN
+    OPEN C_PIEZAS;
+    DBMS_OUTPUT.PUT_LINE('Numero de componentes creados desde la fecha ' || fecha);
+	LOOP
+    FETCH C_PIEZAS INTO listaComponentes;
+	EXIT WHEN C_PIEZAS%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Componente ' || listaComponentes.ID_COMPONENTE || ' creado despues de ' || fecha);
+	END LOOP;
+nComponentes:= C_PIEZAS%ROWCOUNT;
+RETURN nComponentes;
+END NumeroComponentesFecha;
+
+/
+    show errors
+		
+
+/**************************************/
+/*          Bloque de comprobacion    */
+/**************************************/
+SET SERVEROUTPUT ON
+
+DECLARE
+   toRet NUMBER;
+	TORET_VARCHAR varchar2 (10);
+BEGIN
+   DBMS_OUTPUT.NEW_LINE;
+	BEGIN
+	DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: NEUMATICOCADUCADO');
+	NEUMATICOCADUCADO;
+	DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: NEUMATICOCADUCADO');
+EXCEPTION
+      WHEN OTHERS THEN
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+END;
+BEGIN
+   DBMS_OUTPUT.NEW_LINE;
+	BEGIN
+	DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: VALIDANIF');
+	VALIDANIF;
+	DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: VALIDANIF');
+EXCEPTION
+      WHEN OTHERS THEN
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+END;
+    BEGIN
+      DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: PuntuacionPilotos');
+      PuntuacionPilotos(101, toRet);
+      DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: PuntuacionPilotos');
+      DBMS_OUTPUT.PUT_LINE('Pilotos que superan los puntos pedidos: ' || toRet );
+      DBMS_OUTPUT.NEW_LINE;
+   EXCEPTION
+      WHEN OTHERS THEN
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+/*esta última non sei como funciona*/
+
+   END;
+
+
+
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: ActualizarSueldo');
+      ActualizarSueldo(500);
+      DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: ActualizarSueldo');
+      DBMS_OUTPUT.NEW_LINE;
+   EXCEPTION
+      WHEN OTHERS THEN
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+  END;
+
+
+BEGIN
+DBMS_OUTPUT.PUT_LINE('INICIO FUNCION: NumeroComponentesFecha');
+toRet := NumeroComponentesFecha('13-01-2019');
+DBMS_OUTPUT.PUT_LINE('Numero de Componentes totales: ' || toRet);
+DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: NumeroComponentesFecha');
+DBMS_OUTPUT.NEW_LINE;
+EXCEPTION
+	WHEN OTHERS THEN
+		 DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+  END;
+
+ BEGIN
+        DBMS_OUTPUT.PUT_LINE('======>INICIO PROCEDIMIENTO: PorcentajePresupuesto');
+        PorcentajePresupuesto('10000');
+        DBMS_OUTPUT.PUT_LINE('======>FIN PROCEDIMIENTO: PorcentajePresupuesto');
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN NO TRATADA EN EL BLOQUE PRINCIPAL]');
+      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SQLERRM);
+    END;
+  
+  
+ 
+END;
+END;
+/
