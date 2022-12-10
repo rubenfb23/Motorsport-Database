@@ -635,34 +635,27 @@ BEGIN
 END PORCENTAJEPRESUPUESTO;
 /
 SHOW ERRORS
-create or replace PROCEDURE VALIDANIF
-IS
-	listaDNIS EMPLEADOS%ROWTYPE;
-    CURSOR C_DNI IS
-        SELECT DNI, F_INICIOCONTRATO, DIRECCION, NSS, SUELDO, NOMBRE, APELLIDOS, ESCUDID, ID_DIRIGENTE   
-        FROM EMPLEADOS;
-    letrasValidas CHAR(23) := 'TRWAGMYFPDXBNJZSQVHLCKE';
-    letraCorrecta CHAR;
-    DNI_SIN_LETRA NUMBER;
-    letraLeida CHAR;
-    resto NUMBER;
-BEGIN 
-    OPEN C_DNI;
-    LOOP
-        FETCH C_DNI INTO listaDNIS;
-        EXIT WHEN C_DNI%NOTFOUND;
-        resto := DNI_SIN_LETRA MOD 23;
-        letraCorrecta := SUBSTR(letrasValidas, resto+1, 1);
-        DNI_SIN_LETRA := SUBSTR(listaDNIS.DNI,0,8);
-        letraLeida := SUBSTR(listaDNIS.DNI, 9, 1);
-        IF (letraCorrecta != letraLeida) THEN
-           DBMS_OUTPUT.PUT_LINE('El DNI ' || listaDNIS.DNI || ' es INCORRECTO.');
-        ELSE
-            DBMS_OUTPUT.PUT_LINE('El DNI ' || listaDNIS.DNI || ' es correcto.');
-        END IF;
-    END LOOP;
-    CLOSE C_DNI;
-END VALIDANIF;
+CREATE OR REPLACE FUNCTION verificar_dni(p_dni VARCHAR2)
+RETURN BOOLEAN
+AS
+    v_letras VARCHAR2(26) := 'TRWAGMYFPDXBNJZSQVHLCKE';
+    v_letra CHAR;
+    v_numero NUMBER;
+BEGIN
+    -- Comprobar si el formato del DNI es válido (8 dígitos y una letra)
+    IF NOT REGEXP_LIKE(p_dni, '^\d{8}[A-Za-z]$') THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Comprobar si la letra del DNI es correcta
+    v_letra := UPPER(SUBSTR(p_dni, 9, 1));
+    v_numero := TO_NUMBER(SUBSTR(p_dni, 1, 8));
+    IF v_letras(MOD(v_numero, 23) + 1) != v_letra THEN
+        RETURN FALSE;
+    END IF;
+
+    RETURN TRUE;
+END;
 /
 SHOW ERRORS
 /*Procedimiento para actualizar sueldo de empleados*/
