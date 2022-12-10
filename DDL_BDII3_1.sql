@@ -742,20 +742,26 @@ END NumeroComponentesFecha;
 /**************************************/
 SET SERVEROUTPUT ON
 
-DECLARE
-   toRet NUMBER;
-	TORET_VARCHAR varchar2 (10);
 BEGIN
    DBMS_OUTPUT.NEW_LINE;
-	BEGIN
-	DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: NEUMATICOCADUCADO');
-	NEUMATICOCADUCADO;
-	DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: NEUMATICOCADUCADO');
+   DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: NEUMATICOCADUCADO');
+
+   -- Llamar a la función neumatico_caducado y almacenar el resultado en una variable local
+   v_caducado BOOLEAN := neumatico_caducado(p_id_neumatico);
+
+   -- Mostrar el resultado de la función en pantalla
+   IF v_caducado THEN
+      DBMS_OUTPUT.PUT_LINE('El neumático está caducado.');
+   ELSE
+      DBMS_OUTPUT.PUT_LINE('El neumático no está caducado.');
+   END IF;
+
+   DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: NEUMATICOCADUCADO');
 EXCEPTION
-      WHEN OTHERS THEN
-         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
-         DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+      DBMS_OUTPUT.PUT_LINE('[Código]: '  SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[Mensaje]: '  SUBSTR(SQLERRM, 11, 100));
 END;
 BEGIN
    DBMS_OUTPUT.NEW_LINE;
