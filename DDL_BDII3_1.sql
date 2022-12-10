@@ -594,29 +594,26 @@ Select * from persona;
 
 Select * from empresa;
 /*PROCEDIMIENTOS Y FUNCIONES*/
-create or replace PROCEDURE NEUMATICOCADUCADO
-IS
-    listaFECHAS NEUMATICOS%ROWTYPE;
-    CURSOR C_FECHA IS
-        SELECT ID_NEUMATICOS, ID_COMPONENTE, MODELO, COMPUESTO, ESTADO, FECHA_FABRICACION
-        FROM NEUMATICOS;
-    fecha_leida DATE;
-    fecha_actual DATE := SYSDATE;
-    fecha_maxima DATE := SYSDATE - 730;
-BEGIN 
-   OPEN C_FECHA;
-   LOOP
-   FETCH C_FECHA INTO listaFechas;
-   EXIT WHEN C_FECHA%NOTFOUND;
-        fecha_leida := listaFechas.Fecha_Fabricacion;
-        IF (fecha_maxima<fecha_leida) THEN
-        DBMS_OUTPUT.PUT_LINE('NEUMATICO NO CADUCADO: ' || listaFechas.ID_NEUMATICOS);
-        ELSE
-    DBMS_OUTPUT.PUT_LINE('NEUMATICO CADUCADO: ' || listaFECHAS.ID_NEUMATICOS);
-        END IF;
-    END LOOP;
-    CLOSE C_FECHA;
-END NEUMATICOCADUCADO;
+CREATE OR REPLACE FUNCTION neumatico_caducado(
+    p_id_neumatico NUMBER
+)
+RETURN BOOLEAN
+AS
+    v_caducado BOOLEAN;
+BEGIN
+    -- Verificar si la fecha de fabricación del neumático es mayor a dos años antes de la fecha actual
+    SELECT CASE
+               WHEN fecha_fabricacion > ADD_MONTHS(SYSDATE, -24) THEN TRUE
+               ELSE FALSE
+           END
+    INTO v_caducado
+    FROM neumaticos
+    WHERE id_neumaticos = p_id_neumatico;
+    
+    -- Devolver el resultado de la comparación
+    RETURN v_caducado;
+END;
+
 /
     show errors
 create or replace PROCEDURE PORCENTAJEPRESUPUESTO(Presupuesto IN INT)
