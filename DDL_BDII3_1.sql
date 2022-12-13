@@ -806,7 +806,15 @@ BEGIN
 END fecha_InicioContrato;
 /
 show errors
-
+CREATE OR REPLACE TRIGGER fecha_InicioComponente
+BEFORE INSERT OR UPDATE OF FECHA_FABRICACION ON COMPONENTES
+FOR EACH ROW
+WHEN(NEW.FECHA_FABRICACION > CURRENT_DATE)
+BEGIN
+    RAISE_APPLICATION_ERROR(-20001, 'La fecha de fabricación de un componente no puede ser superior al día actual.');
+END fecha_InicioComponente;
+/
+show errors
 /**************************************/
 /*          Bloque de comprobacion de funciones y procedimientos    */
 /**************************************/
@@ -974,4 +982,18 @@ EXCEPTION
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 
+/
+SET SERVEROUTPUT ON
+BEGIN
+    DBMS_OUTPUT.NEW_LINE;
+    
+     DBMS_OUTPUT.PUT_LINE('======>PRUEBA DEL TRIGGER fecha_InicioComponente');
+     INSERT INTO COMPONENTES (ID_COMPONENTE, NUM_PIEZA, NUM_VERSION, FECHA_FABRICACION, ESTADO) VALUES ( '24', '1003', '0002', '13-01-2023', 'USADO');
+     DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER fecha_InicioComponente'); 
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+END;
 /
