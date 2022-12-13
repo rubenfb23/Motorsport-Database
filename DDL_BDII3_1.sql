@@ -751,7 +751,64 @@ END NumeroComponentesFecha;
 /
     show errors
 /**************************************/
-/*          Bloque de comprobacion    */
+/*          Triggers    */
+/**************************************/
+CREATE OR REPLACE TRIGGER verificar_dni_empleado
+BEFORE INSERT ON empleados
+FOR EACH ROW
+BEGIN
+    -- Verificar si el DNI es correcto
+    IF (verificar_dni(:NEW.dni) = 'FALSE') THEN
+        RAISE_APPLICATION_ERROR(-20001, 'El DNI es incorrecto');
+    END IF;
+END verificar_dni_empleado;
+/
+show errors
+CREATE OR REPLACE TRIGGER verificar_estado_pista
+BEFORE INSERT ON wet
+FOR EACH ROW
+BEGIN
+    IF :NEW.estado_pista = 'seco' THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No se pueden insertar neumáticos con estado de pista seco');
+    END IF;
+END verificar_estado_pista;
+/
+show errors
+
+CREATE OR REPLACE TRIGGER EXISTE_DIRIGENTE
+FOR DELETE OR UPDATE OF Job ON EMPLEADOS
+COMPOUND TRIGGER
+   numDirigentes INT;
+
+BEFORE STATEMENT IS
+BEGIN
+   SELECT COUNT(*) INTO numDirigentes FROM EMP WHERE UPPER(Job) = 'PRESIDENT';
+END BEFORE STATEMENT;
+
+BEFORE EACH ROW IS
+BEGIN
+   IF UPPER(:OLD.Job) = 'DIRIGENTE' AND numDirigentes > 1 THEN
+      numDirigentes := numDirigentes - 1;
+   ELSE
+      RAISE_APPLICATION_ERROR(-20007, 'La empresa no se puede quedar sin dirigente');
+   END IF;
+END BEFORE EACH ROW;
+END EXISTE_DIRIGENTE;
+/
+show errors
+
+CREATE OR REPLACE TRIGGER fecha_InicioContrato
+BEFORE INSERT OR UPDATE OF F_INICIOCONTRATO ON EMPLEADOS
+FOR EACH ROW
+WHEN(NEW.F_INICIOCONTRATO > CURRENT_DATE)
+BEGIN
+    RAISE_APPLICATION_ERROR(-20001, 'La fecha de inicio de contrato no puede ser superior al día actual.');
+END fecha_InicioContrato;
+/
+show errors
+
+/**************************************/
+/*          Bloque de comprobacion de funciones y procedimientos    */
 /**************************************/
 SET SERVEROUTPUT ON
 DECLARE
