@@ -330,9 +330,9 @@ CREATE TABLE BATERIA(
 CREATE TABLE NEUMATICOS(
     ID_NEUMATICOS NUMBER(6) NOT NULL,
     ID_COMPONENTE NUMBER(6),
-    ESTADO VARCHAR2(10)NOT NULL,
-    MODELO VARCHAR2(10) NOT NULL,
+    MODELO VARCHAR2(10)NOT NULL,
     COMPUESTO VARCHAR2(10) NOT NULL,
+    ESTADO VARCHAR2(10) NOT NULL,
     FECHA_FABRICACION DATE NOT NULL,
     PRIMARY KEY(ID_NEUMATICOS),
     FOREIGN KEY(ID_COMPONENTE) REFERENCES COMPONENTES
@@ -363,14 +363,14 @@ CREATE TABLE PRODUCCION(
 );
 
 /*******************************************************/
-/* 3.- Creamos los índices necesarios sobre las tablas */
+/* 3.- Creamos los �ndices necesarios sobre las tablas */
 /*******************************************************/
 
 CREATE INDEX Estado_Neumaticos 
 ON NEUMATICOS (ESTADO,MODELO,FECHA_FABRICACION);
 
 /************************************************/
-/* 4.- Creamos las vistas para nuestra temática */
+/* 4.- Creamos las vistas para nuestra tem�tica */
 /************************************************/
 
 CREATE OR REPLACE VIEW V_PIEZAS (NUMERO_PIEZA, NUMERO_VERSION,ID_COMPONENTE,FECHA_FABRICACION,ESTADO)
@@ -565,7 +565,7 @@ INSERT INTO PRODUCCION (ID_COMPONENTE, DNI) VALUES('17', '71111111A');
 
 
 /********************************************/
-/* 6.- Incluímos sentencias de comprobación */
+/* 6.- Inclu�mos sentencias de comprobaci�n */
 /********************************************/
 
 Select * from escud;
@@ -609,7 +609,7 @@ RETURN VARCHAR2
 AS
     v_caducado VARCHAR2(10);
 BEGIN
-    -- Verificar si la fecha de fabricación del neumático es mayor a dos años antes de la fecha actual
+    -- Verificar si la fecha de fabricaci�n del neum�tico es mayor a dos a�os antes de la fecha actual
     SELECT CASE
                WHEN fecha_fabricacion > ADD_MONTHS(SYSDATE, -24) THEN 'TRUE'
                ELSE 'FALSE'
@@ -618,12 +618,41 @@ BEGIN
     FROM neumaticos
     WHERE id_neumaticos = p_id_neumatico;
     
-    -- Devolver el resultado de la comparación
+    -- Devolver el resultado de la comparaci�n
     RETURN v_caducado;
 END;
 
 /
     show errors
+
+CREATE OR REPLACE PROCEDURE InsertarWet(ID_NEUMATICOS IN INT, ID_COMPONENTE IN INT, MODELO IN VARCHAR2, COMPUESTO IN VARCHAR2, ESTADO IN VARCHAR2, FECHA_FABRICACION IN DATE, ESTRIADO IN VARCHAR2, ESTADO_PISTA IN VARCHAR2)
+IS
+BEGIN
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_neumatico DISABLE';
+    INSERT INTO neumaticos VALUES (ID_NEUMATICOS, ID_COMPONENTE, MODELO, COMPUESTO, ESTADO, FECHA_FABRICACION);
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_neumatico ENABLE';
+
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_wet DISABLE';
+    INSERT INTO WET VALUES (ID_NEUMATICOS, ESTRIADO, ESTADO_PISTA);
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_wet ENABLE';
+END InsertarWet;
+/
+show errors
+
+CREATE OR REPLACE PROCEDURE InsertarSlic(ID_NEUMATICOS IN INT, ID_COMPONENTE IN INT, MODELO IN VARCHAR2, COMPUESTO IN VARCHAR2, ESTADO IN VARCHAR2, FECHA_FABRICACION IN DATE, TIPO IN VARCHAR2)
+IS
+BEGIN
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_neumatico DISABLE';
+    INSERT INTO neumaticos VALUES (ID_NEUMATICOS, ID_COMPONENTE, MODELO, COMPUESTO, ESTADO, FECHA_FABRICACION);
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_neumatico ENABLE';
+
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_slic DISABLE';
+    INSERT INTO SLICS VALUES (ID_NEUMATICOS,TIPO);
+    EXECUTE IMMEDIATE 'ALTER TRIGGER deny_insert_slic ENABLE';
+END InsertarSlic;
+/
+show errors
+
 create or replace PROCEDURE PORCENTAJEPRESUPUESTO(Presupuesto IN INT)
 IS
     SUMA_PRESU_VACIO EXCEPTION;
@@ -651,7 +680,7 @@ AS
     v_numero NUMBER;
     letra_correcta CHAR;
 BEGIN
-    -- Comprobar si el formato del DNI es válido (8 dígitos y una letra)
+    -- Comprobar si el formato del DNI es v�lido (8 d�gitos y una letra)
     IF NOT REGEXP_LIKE(p_dni, '^\d{8}[A-Za-z]$') THEN
         RETURN 'FALSE';
     END IF;
@@ -678,8 +707,9 @@ IS
 	CURSOR C_SUELDO IS SELECT * FROM EMPLEADOS FOR UPDATE;
 
 BEGIN
+    /*OPEN C_SUELDO;*/
 	FOR listaEmpleados IN C_SUELDO LOOP
-	/*EXIT WHEN listaEmpleados%NOTFOUND*/
+	/*EXIT WHEN C_SUELDO%NOTFOUND;*/
 		UPDATE EMPLEADOS SET SUELDO =  SUELDO + cant
 			WHERE CURRENT OF C_SUELDO;
 		DBMS_OUTPUT.PUT_LINE(listaEmpleados.SUELDO);
@@ -689,24 +719,24 @@ IF (cant<=0) THEN
 RAISE Cantidad_noValida;
 END IF;
 
-CLOSE C_SUELDO;
+/*CLOSE C_SUELDO;*/
 END ActualizarSueldo;
 /
     show errors
 
-/* Procedimiento para mostrar pilotos con puntuación más alta que punt*/
+
+/* Procedimiento para mostrar pilotos con puntuaci�n m�s alta que punt*/
 CREATE OR REPLACE
 PROCEDURE PuntuacionPilotos( punt IN NUMBER, n_pilotos OUT NUMBER)
 IS
 	listaPilotos PILOTOS%ROWTYPE;
 	CURSOR C_PILOTOS IS SELECT * FROM PILOTOS WHERE PUNTUACIONPILOTO>=punt;
-	No_Pilotos EXCEPTION;
     nombre EMPLEADOS.NOMBRE%TYPE;
 
 BEGIN
 	/*FOR listaPilotos IN C_PILOTOS LOOP*/
     OPEN C_PILOTOS;
-    DBMS_OUTPUT.PUT_LINE('Pilotos con más de ' || punt || ' puntos');
+    DBMS_OUTPUT.PUT_LINE('Pilotos con m�s de ' || punt || ' puntos');
     LOOP
     FETCH C_PILOTOS INTO listaPilotos;
 	EXIT WHEN C_PILOTOS%NOTFOUND;
@@ -717,9 +747,6 @@ END LOOP;
 
 n_pilotos := C_PILOTOS%ROWCOUNT;
 
-IF (n_pilotos<=0) THEN
-RAISE No_Pilotos;
-END IF;
 
 CLOSE C_PILOTOS;
 
@@ -753,6 +780,34 @@ END NumeroComponentesFecha;
 /**************************************/
 /*          Triggers    */
 /**************************************/
+
+CREATE OR REPLACE TRIGGER deny_insert_neumatico
+BEFORE INSERT ON NEUMATICOS
+FOR EACH ROW
+BEGIN
+   RAISE_APPLICATION_ERROR(-20001, 'No se puede insertar un neumático directamente');
+END deny_insert_neumatico;
+/
+show errors
+
+CREATE OR REPLACE TRIGGER deny_insert_wet
+BEFORE INSERT ON WET
+FOR EACH ROW
+BEGIN
+   RAISE_APPLICATION_ERROR(-20001, 'No se puede insertar un neumático de mojado directamente');
+END deny_insert_wet;
+/
+show errors
+
+CREATE OR REPLACE TRIGGER deny_insert_slic
+BEFORE INSERT ON SLICS
+FOR EACH ROW
+BEGIN
+   RAISE_APPLICATION_ERROR(-20001, 'No se puede insertar un neumático de seco directamente');
+END deny_insert_slic;
+/
+show errors
+
 CREATE OR REPLACE TRIGGER verificar_dni_empleado
 BEFORE INSERT ON empleados
 FOR EACH ROW
@@ -769,12 +824,35 @@ BEFORE INSERT ON wet
 FOR EACH ROW
 BEGIN
     IF :NEW.estado_pista = 'seco' THEN
-        RAISE_APPLICATION_ERROR(-20001, 'No se pueden insertar neumáticos con estado de pista seco');
+        RAISE_APPLICATION_ERROR(-20001, 'No se pueden insertar neum�ticos con estado de pista seco');
     END IF;
 END verificar_estado_pista;
 /
 show errors
 
+-----------------------------------------------------------------------------------------------
+CREATE OR REPLACE TRIGGER verificar_marca_neumatico
+BEFORE INSERT OR UPDATE ON NEUMATICOS
+FOR EACH ROW
+BEGIN
+    IF :NEW.MODELO != 'PIRELLI' THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Los neum�ticos tienen que ser de la marca Pirelli');
+    END IF;
+END verificar_marca_neumatico;
+/
+show errors
+
+-----------------------------------------------------------------------------------------------
+CREATE OR REPLACE TRIGGER insertar_patrocinador
+AFTER INSERT ON PATROCINADORES
+REFERENCING NEW AS nuevo_pres FOR EACH ROW
+BEGIN
+UPDATE ESCUD
+SET ESCUDPRESU = ESCUDPRESU + :nuevo_pres.IMPORTE WHERE ESCUDID = :nuevo_pres.ESCUDID;
+END;
+/
+show errors
+-------------------------------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER EXISTE_DIRIGENTE
 FOR DELETE OR UPDATE OF Job ON EMPLEADOS
 COMPOUND TRIGGER
@@ -802,7 +880,7 @@ BEFORE INSERT OR UPDATE OF F_INICIOCONTRATO ON EMPLEADOS
 FOR EACH ROW
 WHEN(NEW.F_INICIOCONTRATO > CURRENT_DATE)
 BEGIN
-    RAISE_APPLICATION_ERROR(-20001, 'La fecha de inicio de contrato no puede ser superior al día actual.');
+    RAISE_APPLICATION_ERROR(-20001, 'La fecha de inicio de contrato no puede ser superior al d�a actual.');
 END fecha_InicioContrato;
 /
 show errors
@@ -811,14 +889,15 @@ BEFORE INSERT OR UPDATE OF FECHA_FABRICACION ON COMPONENTES
 FOR EACH ROW
 WHEN(NEW.FECHA_FABRICACION > CURRENT_DATE)
 BEGIN
-    RAISE_APPLICATION_ERROR(-20001, 'La fecha de fabricación de un componente no puede ser superior al día actual.');
+    RAISE_APPLICATION_ERROR(-20001, 'La fecha de fabricaci�n de un componente no puede ser superior al d�a actual.');
 END fecha_InicioComponente;
 /
 show errors
-/**************************************/
-/*          Bloque de comprobacion de funciones y procedimientos    */
-/**************************************/
+/************************************************************/
+/*  Bloque de comprobacion de funciones y procedimientos    */
+/************************************************************/
 SET SERVEROUTPUT ON
+
 DECLARE
     v_caducado VARCHAR2(10);
     TORET NUMBER;
@@ -830,21 +909,21 @@ BEGIN
    DBMS_OUTPUT.NEW_LINE;
    DBMS_OUTPUT.PUT_LINE('INICIO PROCEDIMIENTO: NEUMATICOCADUCADO');
 
-   -- Llamar a la función neumatico_caducado y almacenar el resultado en una variable local
+   -- Llamar a la funci�n neumatico_caducado y almacenar el resultado en una variable local
    v_caducado  := neumatico_caducado(1);
 
-   -- Mostrar el resultado de la función en pantalla
+   -- Mostrar el resultado de la funci�n en pantalla
    IF v_caducado='TRUE' THEN
-      DBMS_OUTPUT.PUT_LINE('El neumático está caducado.');
+      DBMS_OUTPUT.PUT_LINE('El neum�tico est� caducado.');
    ELSE
-      DBMS_OUTPUT.PUT_LINE('El neumático no está caducado.');
+      DBMS_OUTPUT.PUT_LINE('El neum�tico no est� caducado.');
    END IF;
 
    DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: NEUMATICOCADUCADO');
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 BEGIN
@@ -856,8 +935,8 @@ BEGIN
 	DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: VALIDANIF');
 EXCEPTION
       WHEN OTHERS THEN
-         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+         DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
          DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
     BEGIN
@@ -868,8 +947,8 @@ END;
       DBMS_OUTPUT.NEW_LINE;
    EXCEPTION
       WHEN OTHERS THEN
-         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+         DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
          DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
    END;
 
@@ -882,8 +961,8 @@ END;
       DBMS_OUTPUT.NEW_LINE;
    EXCEPTION
       WHEN OTHERS THEN
-         DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+         DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+         DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
          DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
   END;
 
@@ -896,8 +975,8 @@ DBMS_OUTPUT.PUT_LINE('FIN PROCEDIMIENTO: NumeroComponentesFecha');
 DBMS_OUTPUT.NEW_LINE;
 EXCEPTION
 	WHEN OTHERS THEN
-		 DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-         DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+		 DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+         DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
          DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
   END;
 
@@ -907,8 +986,8 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('======>FIN PROCEDIMIENTO: PorcentajePresupuesto');
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN NO TRATADA EN EL BLOQUE PRINCIPAL]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N NO TRATADA EN EL BLOQUE PRINCIPAL]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SQLERRM);
     END;
   
@@ -920,18 +999,42 @@ END;
 /*************/
 /*   Bloque para prueba de Triggers    */
 /*************/
+SET SERVEROUTPUT ON;
+SELECT * FROM NEUMATICOS;
+SELECT * FROM WET;
+SELECT * FROM SLICS;
+
+SET SERVEROUTPUT ON
+DECLARE
+BEGIN
+   DBMS_OUTPUT.PUT_LINE('======>INSERTAMOS UN NEUMATICO');
+   InsertarWet('6', '19', 'PIRELLI', 'ALGO', 'NUEVO', '13-01-2019','DENSE','FULL');
+   
+   DBMS_OUTPUT.PUT_LINE('======>INSERTAMOS UN NEUMATICO DE SECO');
+   InsertarSlic('7', '20', 'PIRELLI', 'ALGO', 'NUEVO', '13-01-2019','DURO');
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
+      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+END;
+/
+
+SELECT * FROM NEUMATICOS;
+SELECT * FROM WET;
+SELECT * FROM SLICS;
 SET SERVEROUTPUT ON
 BEGIN
    DBMS_OUTPUT.NEW_LINE;
 
    DBMS_OUTPUT.PUT_LINE('======>PRUEBA DEL TRIGGER EXISTE_DIRIGENTE (ANTES)');
    UPDATE EMPLEADOS SET JOB='ANALISTA' WHERE DNI='53817417Q';
-   DBMS_OUTPUT.PUT_LINE('======>PRUEBA DEL TRIGGER EXISTE_DIRIGENTE(DESPUÉS)');
+   DBMS_OUTPUT.PUT_LINE('======>PRUEBA DEL TRIGGER EXISTE_DIRIGENTE(DESPU�S)');
 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 /
@@ -946,12 +1049,28 @@ BEGIN
      DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER verificar_estado_pista '); 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 /
     
+SET SERVEROUTPUT ON
+BEGIN
+    DBMS_OUTPUT.NEW_LINE;
+    
+     DBMS_OUTPUT.PUT_LINE('======>PRUEBA DEL TRIGGER insertar_patrocinador');
+     INSERT INTO PATROCINADORES (NSS, FECHAINICIO, FECHAFIN, IMPORTE, BANNER, ESCUDID, DNI) VALUES ('42379G', '13-06-2021', '23-12-2022', '10000', 'COCHE', '1234G', '12345678A');
+     DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER insertar_patrocinador ');
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+END;
+/
+Select * FROM ESCUD;
+
 SET SERVEROUTPUT ON
 BEGIN
     DBMS_OUTPUT.NEW_LINE;
@@ -962,8 +1081,23 @@ BEGIN
      DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER verificar_dni_empleado'); 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
+END;
+/
+
+SET SERVEROUTPUT ON
+BEGIN
+    DBMS_OUTPUT.NEW_LINE;
+    
+     DBMS_OUTPUT.PUT_LINE('======>PRUEBA DEL TRIGGER verificar_marca_neumatico');
+     INSERT INTO NEUMATICOS (ID_NEUMATICOS, ID_COMPONENTE, MODELO, COMPUESTO, ESTADO, FECHA_FABRICACION) VALUES ('12', '16', 'PIREYI', 'ALGO', 'NUEVO', '13-01-2019');
+     DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER verificar_marca_neumatico'); 
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 /
@@ -977,8 +1111,8 @@ BEGIN
    DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER fecha_InicioContrato '); 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCI�N]');
+      DBMS_OUTPUT.PUT_LINE('[C�digo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 
@@ -992,8 +1126,8 @@ BEGIN
      DBMS_OUTPUT.PUT_LINE('======>FIN PRUEBA DEL TRIGGER fecha_InicioComponente'); 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('[EXCEPCIÓN]');
-      DBMS_OUTPUT.PUT_LINE('[Código]: ' || SQLCODE);
+      DBMS_OUTPUT.PUT_LINE('[EXCEPCION]');
+      DBMS_OUTPUT.PUT_LINE('[COdigo]: ' || SQLCODE);
       DBMS_OUTPUT.PUT_LINE('[Mensaje]: ' || SUBSTR(SQLERRM, 11, 100));
 END;
 /
